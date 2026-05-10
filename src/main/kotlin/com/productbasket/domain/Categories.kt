@@ -1,21 +1,21 @@
 package com.productbasket.domain
 
-enum class ProductCategory(val display: String, val unitCategory: UnitCategory) {
-    Meat      ("Мясо",        UnitCategory.Weight),
-    Fish      ("Рыба",        UnitCategory.Weight),
-    Vegetable ("Овощи",       UnitCategory.Weight),
-    Fruit     ("Фрукты",      UnitCategory.Weight),
-    Grocery   ("Бакалея",     UnitCategory.Weight),
-    Spice     ("Специи",      UnitCategory.Weight),
-    Dairy     ("Молочное",    UnitCategory.Weight),
-    Liquid    ("Жидкости",    UnitCategory.Volume),
-    Oil       ("Масла",       UnitCategory.Weight),
-    Eggs      ("Яйца",        UnitCategory.Countable),
-    Bakery    ("Выпечка",     UnitCategory.Weight),
-    Frozen    ("Заморозка",   UnitCategory.Weight),
-    Condiment ("Соусы",       UnitCategory.Weight),
-    Nuts      ("Орехи/сухофрукты", UnitCategory.Weight),
-    Other     ("Прочее",      UnitCategory.Weight);
+enum class ProductCategory(val display: String) {
+    Meat      ("Мясо"),
+    Fish      ("Рыба"),
+    Vegetable ("Овощи"),
+    Fruit     ("Фрукты"),
+    Grocery   ("Бакалея"),
+    Spice     ("Специи"),
+    Dairy     ("Молочное"),
+    Liquid    ("Жидкости"),
+    Oil       ("Масла"),
+    Eggs      ("Яйца"),
+    Bakery    ("Выпечка"),
+    Frozen    ("Заморозка"),
+    Condiment ("Соусы"),
+    Nuts      ("Орехи/сухофрукты"),
+    Other     ("Прочее");
 }
 
 enum class DishCategory(val display: String) {

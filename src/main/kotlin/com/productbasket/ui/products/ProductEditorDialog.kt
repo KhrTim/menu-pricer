@@ -27,14 +27,8 @@ fun showProductEditor(existing: Product? = null): Product? {
         setCellFactory { labelListCell { it.display } }
     }
 
-    fun refreshUnits() {
-        val cat = categoryBox.value ?: return
-        val units = MeasureUnit.forCategory(cat.unitCategory)
-        unitBox.items.setAll(units)
-        unitBox.value = if (existing?.category == cat) existing.purchaseUnit else units.first()
-    }
-    categoryBox.setOnAction { refreshUnits() }
-    refreshUnits()
+    unitBox.items.setAll(MeasureUnit.values().toList())
+    unitBox.value = existing?.purchaseUnit ?: MeasureUnit.Kilogram
 
     val packSizeField = TextField(existing?.packSize?.let { formatQty(it) } ?: "1")
     packSizeField.promptText = "1, 30, 0.5 ..."

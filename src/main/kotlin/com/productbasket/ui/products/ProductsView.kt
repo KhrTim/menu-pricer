@@ -40,6 +40,11 @@ fun buildProductsView(state: AppState): Region {
     val table = TableView(filtered).apply {
         columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
         placeholder = Label("Нет продуктов. Нажмите «Добавить» для создания первого.")
+        setOnMouseClicked { e ->
+            if (e.clickCount == 2) selectionModel.selectedItem?.let { sel ->
+                showProductEditor(sel)?.let { state.updateProduct(it) }
+            }
+        }
     }
 
     val nameCol = TableColumn<Product, String>("Название").apply {

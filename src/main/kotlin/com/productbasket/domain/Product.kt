@@ -14,8 +14,5 @@ data class Product(
         require(name.isNotBlank()) { "Название продукта не может быть пустым" }
         require(packSize > 0) { "Размер упаковки должен быть больше 0" }
         require(pricePerPack >= 0) { "Цена не может быть отрицательной" }
-        require(purchaseUnit.category == category.unitCategory) {
-            "Единица измерения '${purchaseUnit.display}' не подходит для категории '${category.display}'"
-        }
     }
 }

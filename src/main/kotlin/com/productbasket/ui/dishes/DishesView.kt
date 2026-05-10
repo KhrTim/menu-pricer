@@ -42,6 +42,11 @@ fun buildDishesView(state: AppState): Region {
     val table = TableView(filtered).apply {
         columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
         placeholder = Label("Нет блюд. Нажмите «Добавить» для создания первого.")
+        setOnMouseClicked { e ->
+            if (e.clickCount == 2) selectionModel.selectedItem?.let { sel ->
+                showDishEditor(state, sel)?.let { state.updateDish(it) }
+            }
+        }
     }
 
     // Force refresh when products change (price recalc)

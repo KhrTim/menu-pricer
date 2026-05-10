@@ -5,11 +5,14 @@ import org.junit.jupiter.api.Test
 
 class DomainInvariantsTest {
 
-    @Test fun `product rejects unit that mismatches category`() {
-        // Liquid category requires Volume units
-        assertThrows(IllegalArgumentException::class.java) {
-            Product(name = "Вода", category = ProductCategory.Liquid,
+    @Test fun `product accepts any unit in any category`() {
+        assertDoesNotThrow {
+            Product(name = "Масло", category = ProductCategory.Oil,
+                purchaseUnit = MeasureUnit.Gram, packSize = 1.0, pricePerPack = 50.0)
+            Product(name = "Яйцо", category = ProductCategory.Eggs,
                 purchaseUnit = MeasureUnit.Kilogram, packSize = 1.0, pricePerPack = 50.0)
+            Product(name = "Молоко", category = ProductCategory.Dairy,
+                purchaseUnit = MeasureUnit.Liter, packSize = 1.0, pricePerPack = 80.0)
         }
     }
 

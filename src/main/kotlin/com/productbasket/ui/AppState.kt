@@ -66,7 +66,7 @@ class AppState {
     fun deleteDish(id: UUID) { dishes.removeIf { it.id == id }; scheduleAutosave() }
 
     private fun scheduleAutosave() {
-        val path = currentFile ?: return
+        val path = currentFile ?: defaultDataPath().also { currentFile = it }
         pendingSave?.cancel(false)
         pendingSave = scheduler.schedule({ saveToFile(path, products.toList(), dishes.toList()) }, 500, TimeUnit.MILLISECONDS)
     }

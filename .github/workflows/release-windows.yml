@@ -3,63 +3,115 @@ name: Windows Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 permissions:
   contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-2019
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: gradle
+      - run: ./gradlew test --no-daemon
+
+  windows-installer:
+    name: Build Windows installer
+    needs: test
+    runs-on: windows-2022
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          java-version: "17"
+          distribution: temurin
+          cache: gradle
 
-      # WiX 3 is needed by jpackage to build MSI installers on Windows
-      - name: Install WiX 3
-        run: choco install wixtoolset --version 3.14.1 -y
-        shell: powershell
-
-      - name: Build fat JAR
-        run: ./gradlew fatJar
-
-      - name: Package MSI
+      - name: Parse version from tag
+        id: version
+        shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
-          $jarPath = Get-ChildItem -Path build/libs -Filter "*-all.jar" | Select-Object -First 1 -ExpandProperty FullName
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          echo "value=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+      - name: Build distribution layout
+        # installDist puts all JARs (including JavaFX win natives) into
+        # build/install/product-basket/lib/ — the right input for jpackage
+        run: ./gradlew installDist --no-daemon
+
+      - name: Locate main JAR
+        id: mainjar
+        shell: pwsh
+        run: |
+          $jar = (Get-ChildItem build/install/product-basket/lib -Filter "product-basket-*.jar")[0].Name
+          echo "name=$jar" >> $env:GITHUB_OUTPUT
+
+      - name: Package MSI installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
           jpackage `
-            --input build/libs `
-            --main-jar (Split-Path $jarPath -Leaf) `
+            --input      build/install/product-basket/lib `
+            --main-jar   "${{ steps.mainjar.outputs.name }}" `
             --main-class com.productbasket.MainKt `
-            --name "ProductBasket" `
-            --app-version $version `
-            --type msi `
+            --name       ProductBasket `
+            --app-version "${{ steps.version.outputs.value }}" `
+            --description "Dish cost calculator" `
+            --type       msi `
             --win-dir-chooser `
             --win-menu `
             --win-shortcut `
-            --dest dist
-        shell: powershell
+            --java-options "--add-opens javafx.controls/javafx.scene.control=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.graphics/javafx.scene=ALL-UNNAMED" `
+            --dest        dist
 
-      - name: Package portable ZIP
+      - name: Package portable app-image
+        shell: pwsh
         run: |
-          $version = "${{ github.ref_name }}".TrimStart('v')
-          $jarPath = Get-ChildItem -Path build/libs -Filter "*-all.jar" | Select-Object -First 1 -ExpandProperty FullName
-          New-Item -ItemType Directory -Path "portable/ProductBasket"
-          Copy-Item $jarPath "portable/ProductBasket/app.jar"
-          Set-Content -Path "portable/ProductBasket/start.bat" -Value "@echo off`r`njava -jar app.jar`r`n"
-          jlink --output portable/ProductBasket/runtime `
-            --add-modules java.base,java.desktop,javafx.controls,javafx.fxml `
-            --strip-debug --no-header-files --no-man-pages
-          Compress-Archive -Path portable/ProductBasket -DestinationPath "dist/ProductBasket-$version-portable.zip"
-        shell: powershell
-        continue-on-error: true
+          $ver = "${{ steps.version.outputs.value }}"
+          jpackage `
+            --input      build/install/product-basket/lib `
+            --main-jar   "${{ steps.mainjar.outputs.name }}" `
+            --main-class com.productbasket.MainKt `
+            --name       ProductBasket `
+            --app-version $ver `
+            --type       app-image `
+            --java-options "--add-opens javafx.controls/javafx.scene.control=ALL-UNNAMED" `
+            --java-options "--add-opens javafx.graphics/javafx.scene=ALL-UNNAMED" `
+            --dest        dist-image
 
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v1
+          # Add a one-click launcher batch file
+          Set-Content -Path dist-image/ProductBasket/launch.bat `
+            -Value "@echo off`r`ncd /d `"%~dp0`"`r`nProductBasket\ProductBasket.exe`r`n"
+
+          Compress-Archive `
+            -Path dist-image/ProductBasket `
+            -DestinationPath "dist/ProductBasket-$ver-portable.zip"
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
-          files: dist/*
+          name: test-report-windows
+          path: build/reports/tests/test/
+          retention-days: 7
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.msi
+            dist/*.zip
+          generate_release_notes: true

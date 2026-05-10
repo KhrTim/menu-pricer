@@ -9,9 +9,12 @@ import javafx.scene.control.*
 import javafx.scene.layout.*
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import java.io.File
 import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 fun buildMainView(stage: Stage, state: AppState): Region {
     val productsTab = Tab("Продукты", buildProductsView(state)).apply { isClosable = false }
@@ -26,19 +29,25 @@ fun buildMainView(stage: Stage, state: AppState): Region {
     }
 }
 
+private fun downloadsDir(): File {
+    System.getenv("XDG_DOWNLOAD_DIR")?.let { File(it).takeIf(File::isDirectory) }?.let { return it }
+    val home = File(System.getProperty("user.home"))
+    return listOf("Downloads", "Загрузки").map { home.resolve(it) }.firstOrNull(File::isDirectory) ?: home
+}
+
 private fun buildMenuBar(stage: Stage, state: AppState): MenuBar {
     val jsonFilter = FileChooser.ExtensionFilter("Данные (*.json)", "*.json")
     val pdfFilter = FileChooser.ExtensionFilter("PDF (*.pdf)", "*.pdf")
 
     fun chooserOpen(vararg filters: FileChooser.ExtensionFilter) = FileChooser().apply {
         extensionFilters.addAll(*filters)
-        state.currentFile?.parent?.let { initialDirectory = it.toFile() }
+        initialDirectory = state.currentFile?.parent?.toFile() ?: downloadsDir()
     }.showOpenDialog(stage)
 
-    fun chooserSave(ext: String, vararg filters: FileChooser.ExtensionFilter) = FileChooser().apply {
+    fun chooserSave(ext: String, defaultName: String = "data.$ext", vararg filters: FileChooser.ExtensionFilter) = FileChooser().apply {
         extensionFilters.addAll(*filters)
-        state.currentFile?.parent?.let { initialDirectory = it.toFile() }
-        initialFileName = state.currentFile?.fileName?.toString() ?: "data.$ext"
+        initialDirectory = state.currentFile?.parent?.toFile() ?: downloadsDir()
+        initialFileName = state.currentFile?.fileName?.toString() ?: defaultName
     }.showSaveDialog(stage)
 
     val newItem = MenuItem("Новый").apply {
@@ -70,7 +79,7 @@ private fun buildMenuBar(stage: Stage, state: AppState): MenuBar {
     val saveItem = MenuItem("Сохранить").apply {
         setOnAction {
             val path = state.currentFile ?: run {
-                val f = chooserSave("json", jsonFilter) ?: return@setOnAction
+                val f = chooserSave("json", "данные.json", jsonFilter) ?: return@setOnAction
                 f.toPath()
             }
             try {
@@ -84,7 +93,7 @@ private fun buildMenuBar(stage: Stage, state: AppState): MenuBar {
 
     val saveAsItem = MenuItem("Сохранить как…").apply {
         setOnAction {
-            val file = chooserSave("json", jsonFilter) ?: return@setOnAction
+            val file = chooserSave("json", "данные.json", jsonFilter) ?: return@setOnAction
             try {
                 state.save(file.toPath())
                 stage.title = "Продуктовая корзина — ${file.name}"
@@ -108,7 +117,7 @@ private fun buildMenuBar(stage: Stage, state: AppState): MenuBar {
 
     val exportItem = MenuItem("Экспортировать JSON…").apply {
         setOnAction {
-            val file = chooserSave("json", jsonFilter) ?: return@setOnAction
+            val file = chooserSave("json", "данные.json", jsonFilter) ?: return@setOnAction
             try {
                 saveToFile(file.toPath(), state.products.toList(), state.dishes.toList())
                 showInfo("Данные экспортированы в ${file.name}")
@@ -131,7 +140,8 @@ private fun buildMenuBar(stage: Stage, state: AppState): MenuBar {
                 alert.contentText = "Нажмите OK, чтобы добавить список ингредиентов под каждым блюдом."
                 alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK
             }
-            val file = chooserSave("pdf", pdfFilter) ?: return@setOnAction
+            val dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+            val file = chooserSave("pdf", "меню-$dateStr.pdf", pdfFilter) ?: return@setOnAction
             try {
                 FileOutputStream(file).use { out ->
                     exportDishesPdf(out, state.dishes.toList(), state.productsById, includeIngredients)

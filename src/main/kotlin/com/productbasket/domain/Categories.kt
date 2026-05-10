@@ -9,11 +9,11 @@ enum class ProductCategory(val display: String, val unitCategory: UnitCategory) 
     Spice     ("Специи",      UnitCategory.Weight),
     Dairy     ("Молочное",    UnitCategory.Weight),
     Liquid    ("Жидкости",    UnitCategory.Volume),
-    Oil       ("Масла",       UnitCategory.Volume),
+    Oil       ("Масла",       UnitCategory.Weight),
     Eggs      ("Яйца",        UnitCategory.Countable),
     Bakery    ("Выпечка",     UnitCategory.Weight),
     Frozen    ("Заморозка",   UnitCategory.Weight),
-    Condiment ("Соусы",       UnitCategory.Volume),
+    Condiment ("Соусы",       UnitCategory.Weight),
     Nuts      ("Орехи/сухофрукты", UnitCategory.Weight),
     Other     ("Прочее",      UnitCategory.Weight);
 }

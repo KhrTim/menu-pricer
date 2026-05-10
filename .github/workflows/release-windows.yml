@@ -1,0 +1,65 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-2019
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # WiX 3 is needed by jpackage to build MSI installers on Windows
+      - name: Install WiX 3
+        run: choco install wixtoolset --version 3.14.1 -y
+        shell: powershell
+
+      - name: Build fat JAR
+        run: ./gradlew fatJar
+
+      - name: Package MSI
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $jarPath = Get-ChildItem -Path build/libs -Filter "*-all.jar" | Select-Object -First 1 -ExpandProperty FullName
+          jpackage `
+            --input build/libs `
+            --main-jar (Split-Path $jarPath -Leaf) `
+            --main-class com.productbasket.MainKt `
+            --name "ProductBasket" `
+            --app-version $version `
+            --type msi `
+            --win-dir-chooser `
+            --win-menu `
+            --win-shortcut `
+            --dest dist
+        shell: powershell
+
+      - name: Package portable ZIP
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $jarPath = Get-ChildItem -Path build/libs -Filter "*-all.jar" | Select-Object -First 1 -ExpandProperty FullName
+          New-Item -ItemType Directory -Path "portable/ProductBasket"
+          Copy-Item $jarPath "portable/ProductBasket/app.jar"
+          Set-Content -Path "portable/ProductBasket/start.bat" -Value "@echo off`r`njava -jar app.jar`r`n"
+          jlink --output portable/ProductBasket/runtime `
+            --add-modules java.base,java.desktop,javafx.controls,javafx.fxml `
+            --strip-debug --no-header-files --no-man-pages
+          Compress-Archive -Path portable/ProductBasket -DestinationPath "dist/ProductBasket-$version-portable.zip"
+        shell: powershell
+        continue-on-error: true
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*

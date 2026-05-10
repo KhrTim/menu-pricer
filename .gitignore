@@ -1,0 +1,12 @@
+.gradle/
+build/
+dist/
+portable/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
